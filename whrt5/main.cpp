@@ -2,6 +2,7 @@
 #include "cmmn.h"
 #include "texture.h"
 #include "camera.h"
+#include "video.h"
 
 namespace whrt5 {
 	struct hit_record {
@@ -93,38 +94,54 @@ int main(int argc, char* argv[]) {
 		assert(b(0) == 0.f);
 	}
 
-	auto objs = group{
-		make_shared<sphere>([](float t) { return vec3(cosf(t)*2.f,sinf(t)*2.f,0.f); }, 1.f)
-	};
-	auto cam = camera(vec3(0.f, 0.f, -8.f), vec3(0.f), 0.01f, 5, 0.1f);
-	auto rt = texture2d(uvec2(640, 480));
-	auto render_start = chrono::high_resolution_clock::now();
-	rt.tiled_multithreaded_raster(uvec2(32), [&](uvec2 px) {
-		vec3 col = vec3(0.f);
-		for(uint8 sy = 0; sy < 4; ++sy)
-			for (uint8 sx = 0; sx < 4; ++sx) {
-				vec2 ss = (vec2(sx, sy)+rnd::randf2()) / 4.f;
-				vec2 uv = (((vec2)(px) + ss) / (vec2)rt.size)*2.f - 1.f;
-				hit_record hr;
-				auto r = cam.generate_ray(uv, 0.f);
-				if (objs.hit(r, &hr)) {
-					col += vec3(1.f);
-				}
-				else {
-					col += vec3(0.05f, 0.05f, 0.5f);
-				}
-			}
-		col /= 16.f;
-		col = pow(col, vec3(1.f / 2.2f));
-		return col;
-	});
-	auto render_time = chrono::high_resolution_clock::now() - render_start;
-	ostringstream watermark;
-	watermark << "render took " << chrono::duration_cast<chrono::milliseconds>(render_time).count() << "ms" << endl;
-	rt.draw_text(watermark.str(), uvec2(2, 2), vec3(1.f, 1.f, 0.f));
-
 	ostringstream fns;
+	fns << "anim_" << chrono::system_clock::now().time_since_epoch().count() << ".ogg";
+	uint32 fps = 30;
+	auto res = uvec2(640,480);
+	const int fc = fps*5;
+	const uint8 smp = 6;
+
+	video v{ fns.str(), res, {fps,1} };
+
+	auto objs = group{
+		make_shared<sphere>([](float t) { return vec3(cosf(t*pi<float>()*4.f)*2.f,sinf(t*pi<float>()*4.f)*2.f,0.f); }, 1.f),
+		make_shared<sphere>([](float t) { return vec3(cosf(t*pi<float>()*4.f + pi<float>())*2.f,sinf(t*pi<float>()*4.f + pi<float>())*2.f,sinf(t)*2.f); }, 1.f)
+	};
+	auto cam = camera(vec3(0.f, 0.f, -8.f), vec3(0.f), 0.01f, 5, 1.f/(float)fps);
+	auto rt = texture2d(res);
+	for (int i = 0; i < fc; ++i) {
+		auto render_start = chrono::high_resolution_clock::now();
+		rt.tiled_multithreaded_raster(uvec2(32), [&](uvec2 px) {
+			vec3 col = vec3(0.f);
+			for (uint8 sy = 0; sy < smp; ++sy)
+				for (uint8 sx = 0; sx < smp; ++sx) {
+					vec2 ss = (vec2(sx, sy) + rnd::randf2()) / (float)smp;
+					vec2 uv = (((vec2)(px)+ss) / (vec2)rt.size)*2.f - 1.f;
+					hit_record hr;
+					auto r = cam.generate_ray(uv, (float)i / (float)fps);
+					if (objs.hit(r, &hr)) {
+						col += vec3(1.f);
+					}
+					else {
+						col += vec3(0.05f, 0.05f, 0.5f);
+					}
+				}
+			col /= (float)(smp*smp);
+			col = pow(col, vec3(1.f / 2.2f));
+			return col;
+		});
+		auto render_time = chrono::high_resolution_clock::now() - render_start;
+		ostringstream watermark;
+		watermark << "render took " << chrono::duration_cast<chrono::milliseconds>(render_time).count() << "ms" << endl
+			<< i << "/" << fc << endl;
+		rt.draw_text(watermark.str(), uvec2(2, 2), vec3(1.f, 1.f, 0.f));
+		v.write_frame(rt, i == fc-1);
+		cout << "frame " << i << " of " << fc << endl;
+	}
+	v.flush();
+
+	/*ostringstream fns;
 	fns << "image_" << chrono::system_clock::now().time_since_epoch().count() << ".bmp";
-	rt.write_bmp(fns.str());
+	rt.write_bmp(fns.str());*/
 	return 0;
 }
