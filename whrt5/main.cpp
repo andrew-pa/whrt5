@@ -8,6 +8,8 @@ namespace whrt5 {
 	struct hit_record {
 		float t;
 		vec3 norm;
+		vec2 texc;
+		texture<vec3, vec2>* tex;
 		hit_record() : t(10000.f) {}
 	};
 	struct surface {
@@ -40,8 +42,9 @@ namespace whrt5 {
 
 	struct sphere : public surface {
 		animated<vec3> center; float radius;
+		shared_ptr<texture<vec3, vec2>> diffuse_tex;
 
-		sphere(animated<vec3> c, float r) : center(c), radius(r) {}
+		sphere(animated<vec3> c, float r, shared_ptr<texture<vec3, vec2>> dt = nullptr) : center(c), radius(r), diffuse_tex(dt) {}
 
 		/*inline aabb bounds() const override {
 			return aabb(center - radius, center + radius);
@@ -60,19 +63,20 @@ namespace whrt5 {
 				if (hr->t < i1) return false;
 				hr->t = i1;
 				hr->norm = normalize(r(i1) - centr);
-/*				float cos_phi = -dot(hr->norm, vec3(0, 1, 0));
+				float cos_phi = -dot(hr->norm, vec3(0, 1, 0));
 				float phi = acosf(cos_phi);
 				float sin_phi = sin(phi);
-				hr->texture_coords.y = phi * one_over_pi<float>();
+				hr->texc.y = phi * one_over_pi<float>();
 				float theta = acosf(dot(vec3(0, 0, -1), hr->norm) / sin_phi) * two_over_pi<float>();
 				if (dot(vec3(1, 0, 0), hr->norm) >= 0) theta = 1.f - theta;
-				hr->texture_coords.x = theta;
+				hr->texc.x = theta;
+				hr->tex = diffuse_tex.get();
 
-				auto p = r(i1);
-				hr->dpdu = vec3(-2.f*pi<float>()*p.y, 2.f*pi<float>()*p.x, 0);
-				hr->dpdv = vec3(p.z*cos_phi, p.z*sin_phi, -radius*sin(theta));
+				/*				auto p = r(i1);
+								hr->dpdu = vec3(-2.f*pi<float>()*p.y, 2.f*pi<float>()*p.x, 0);
+								hr->dpdv = vec3(p.z*cos_phi, p.z*sin_phi, -radius*sin(theta));
 
-				hr->surf = this;*/
+								hr->surf = this;*/
 				return true;
 			}
 			return false;
@@ -97,17 +101,25 @@ int main(int argc, char* argv[]) {
 	ostringstream fns;
 	fns << "anim_" << chrono::system_clock::now().time_since_epoch().count() << ".ogg";
 	uint32 fps = 30;
-	auto res = uvec2(640,480);
-	const int fc = fps*5;
+	auto res = uvec2(640, 480);
+	const int fc = fps * 6;
 	const uint8 smp = 6;
 
 	video v{ fns.str(), res, {fps,1} };
 
 	auto objs = group{
-		make_shared<sphere>([](float t) { return vec3(cosf(t*pi<float>()*4.f)*2.f,sinf(t*pi<float>()*4.f)*2.f,0.f); }, 1.f),
-		make_shared<sphere>([](float t) { return vec3(cosf(t*pi<float>()*4.f + pi<float>())*2.f,sinf(t*pi<float>()*4.f + pi<float>())*2.f,sinf(t)*2.f); }, 1.f)
+		make_shared<sphere>([](float t) { 
+			return vec3(cosf(t*pi<float>()*2.f)*2.f,
+						sinf(t*pi<float>()*2.f)*2.f,
+						cosf(t)*2.f); 
+		}, 1.f, make_shared<const_texture<vec3,vec2>>(vec3(0.8f, 0.6f, 0.f))),
+		make_shared<sphere>([](float t) { 
+			return vec3(cosf(t*pi<float>()*2.f + pi<float>())*2.f,
+						sinf(t*pi<float>()*2.f + pi<float>())*2.f,
+						sinf(t)*2.f); 
+		}, 1.f, make_shared<checkerboard_texture>(vec3(1.f),vec3(0.f),8.f))
 	};
-	auto cam = camera(vec3(0.f, 0.f, -8.f), vec3(0.f), 0.01f, 5, 1.f/(float)fps);
+	auto cam = camera(vec3(0.f, 0.f, -6.f), vec3(0.f), 0.01f, 5, 1.f / (float)fps);
 	auto rt = texture2d(res);
 	for (int i = 0; i < fc; ++i) {
 		auto render_start = chrono::high_resolution_clock::now();
@@ -120,7 +132,7 @@ int main(int argc, char* argv[]) {
 					hit_record hr;
 					auto r = cam.generate_ray(uv, (float)i / (float)fps);
 					if (objs.hit(r, &hr)) {
-						col += vec3(1.f);
+						col += hr.tex->texel(hr.texc)*glm::max(0.f, dot(hr.norm, vec3(0.f, 1.f, 0.f)));
 					}
 					else {
 						col += vec3(0.05f, 0.05f, 0.5f);
@@ -135,7 +147,7 @@ int main(int argc, char* argv[]) {
 		watermark << "render took " << chrono::duration_cast<chrono::milliseconds>(render_time).count() << "ms" << endl
 			<< i << "/" << fc << endl;
 		rt.draw_text(watermark.str(), uvec2(2, 2), vec3(1.f, 1.f, 0.f));
-		v.write_frame(rt, i == fc-1);
+		v.write_frame(rt, i == fc - 1);
 		cout << "frame " << i << " of " << fc << endl;
 	}
 	v.flush();

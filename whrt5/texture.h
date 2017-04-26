@@ -2,7 +2,7 @@
 #include "cmmn.h"
 
 namespace whrt5 {
-	
+
 	/*
 		base class for all textures
 		C:	resulting color type
@@ -30,7 +30,7 @@ namespace whrt5 {
 	public:
 		// size of texture in pixels
 		uvec2 size;
-		
+
 		// create a new, uninitialized texture of size _s
 		texture2d(uvec2 _s) : size(_s), _pixels(_s.x*_s.y, vec3(0.f)) {}
 		// create a texture by loading data out of a BMP file
@@ -68,5 +68,39 @@ namespace whrt5 {
 		void draw_text(const string& text, uvec2 pos, vec3 color);
 
 		void tiled_multithreaded_raster(uvec2 tilesize, function<vec3(uvec2)> f);
+	};
+
+	template<typename C, typename T>
+	struct const_texture : public texture<C, T> {
+		C val;
+		const_texture(C v) : val(v) {}
+
+		C texel(T) const override { return val; }
+	};
+
+	struct checkerboard_texture : public texture<vec3, vec2> {
+		vec3 colors[2];
+		float scale;
+
+		checkerboard_texture(vec3 cA, vec3 cB, float scl) : scale(scl) {
+			colors[0] = cA; colors[1] = cB;
+		}
+
+		vec3 texel(vec2 uv) const override {
+			uv = floor(uv*scale);
+			return colors[(size_t)mod(uv.x + uv.y, 2.f)];
+		}
+	};
+
+	struct grid_texture : public texture<vec3, vec2> {
+		vec3 bg_color, fg_color;
+		float scale, line_size;
+
+		grid_texture(vec3 fg, vec3 bg, float s, float ls) : scale(s), line_size(ls), bg_color(bg), fg_color(fg) {}
+
+		vec3 texel(vec2 uv) const override {
+			uv = step(fract(uv*scale), vec2(line_size));
+			return mix(bg_color, fg_color, glm::max(uv.x, uv.y));
+		}
 	};
 }
