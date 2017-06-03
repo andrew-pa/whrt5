@@ -216,6 +216,18 @@ namespace whrt5 {
 		}
 	};
 
+	template<typename T>
+	struct animated {
+		function<T(float)> F;
+		T cv;
+		bool const_val;
+		animated(T t) : cv(t), const_val(true), F([t](float) {return t; }) {}
+		template<typename Func>
+		animated(Func f) : F(f), const_val(false) {}
+
+		T operator()(float t) const { return const_val ? cv : F(t); }
+	};
+	
 	namespace rnd {
 		static mt19937 RNG;
 		//static minstd_rand RNG = minstd_rand(random_device()());

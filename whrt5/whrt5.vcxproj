@@ -128,6 +128,7 @@
   <ItemGroup>
     <ClInclude Include="camera.h" />
     <ClInclude Include="cmmn.h" />
+    <ClInclude Include="surface.h" />
     <ClInclude Include="texture.h" />
     <ClInclude Include="video.h" />
   </ItemGroup>
