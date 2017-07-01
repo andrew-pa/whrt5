@@ -44,7 +44,7 @@ namespace whrt5 {
 
 		bool hit(const ray& r, hit_record* hr) const {
 			auto t = inverse(transform(r.time));
-			auto R = ray(vec4(r.e, 1.f)*t, vec4(r.d, 0.f)*t, r.time);
+			auto R = ray(t*vec4(r.e, 1.f), t*vec4(r.d, 0.f), r.time);
 			return p->hit(R, hr);
 		}
 	};
@@ -91,9 +91,9 @@ namespace whrt5 {
 				if (scene->hit(sr, &shr)) {
 					shadow = 0.f;
 				}
-				vec3 col =  hr.mat->tex->texel(hr.texc)*glm::max(0.f, dot(hr.norm, L))*shadow;
+				vec3 col =  hr.mat->tex->texel(hr.texc)*(glm::max(0.f, dot(hr.norm, L))*shadow);
 				if (hr.mat->reflect > 0.f) {
-					col += hr.mat->reflect * ray_color(ray(p + hr.norm*0.01f, reflect(r.d, hr.norm)), rc + 1);
+					col += hr.mat->reflect * ray_color(ray(p + hr.norm*0.01f, reflect(r.d, hr.norm), r.time), rc + 1);
 				}
 				return col;
 			}
@@ -125,9 +125,9 @@ namespace whrt5 {
 }
 
 using namespace whrt5;
-//#define VIDEO
+#define VIDEO
 int main(int argc, char* argv[]) {
-	rnd::RNG = mt19937(random_device()());
+	//rnd::RNG = mt19937(random_device()());
 
 	{
 		animated<float> a(4.f);
@@ -146,27 +146,22 @@ int main(int argc, char* argv[]) {
 		<< ".bmp";
 #endif
 	uint32 fps = 30;
-	auto res = uvec2(1920, 1080); //uvec2(640, 480);
+	auto res = uvec2(640, 480);
 	const int fc = fps * 10;
-	const uint8 smp = 8;
-
+	const uint8 smp = 8; 
 	auto rndr = renderer(make_shared<pgroup>(
 		pgroup {
-			make_shared<surface_primitive>(make_shared<surfaces::sphere>([](float t) {
-				return vec3(cosf(t*pi<float>()*2.f)*2.f,
-							sinf(t*pi<float>()*2.f)*2.f + 3.f,
+			/*make_shared<surface_primitive>(make_shared<surfaces::sphere>([](float t) {
+				return vec3(cosf(t*pi<float>()*4.f)*2.f,
+							sinf(t*pi<float>()*4.f)*2.f + 3.f,
 							cosf(t)*2.f);
 				}, 1.f), 
 				make_shared<material>(make_shared<const_texture<vec3, vec2>>(vec3(0.8f, 0.6f, 0.f)))
 			),
-			make_shared<surface_primitive>(make_shared<surfaces::sphere>([](float t) {
-				return vec3(sinf(t*pi<float>()*3.f)*4.f,
-							cosf(t*pi<float>()*.5f)*2.f + 3.5f,
-							cosf(t+20.f)*2.f);
-				}, 1.5f), 
-				make_shared<material>(make_shared<grid_texture>(vec3(0.4f, 0.0f, .8f), vec3(0.6f, 0.6f, 0.6f), 8.f, 0.2f), .9f)
-			),
-			make_shared<surface_primitive>(make_shared<surfaces::sphere>([](float t) {
+			make_shared<surface_primitive>(make_shared<surfaces::sphere>(vec3(0.f,1.5f,0.f), 1.5f),
+				make_shared<material>(/*make_shared<grid_texture>(vec3(0.4f, 0.0f, .8f), vec3(0.6f, 0.6f, 0.6f), 8.f, 0.2f)*/// make_shared<const_texture<vec3,vec2>>(vec3(0.f)), .99f)
+			//),
+			/*make_shared<surface_primitive>(make_shared<surfaces::sphere>([](float t) {
 				return vec3(cosf(t*pi<float>()*2.f + pi<float>())*2.f,
 				sinf(t*pi<float>()*2.f + pi<float>())*2.f + 3.f,
 				sinf(t)*2.f);
@@ -180,6 +175,14 @@ int main(int argc, char* argv[]) {
 					return translate(mat4(1), vec3(0.f, 3.f, 0.f));//, t, vec3(0.3f, 0.8f, 0.6f));
 				}
 			),*/
+			make_shared<transform_primitive>(
+				make_shared<surface_primitive>(make_shared<surfaces::cylinder>(1.0f, 5.f),
+					make_shared<material>(make_shared<checkerboard_texture>(vec3(1.f), vec3(0.0f), 2.f))
+				),
+				[](float t) {
+					return rotate(translate(mat4(1), vec3(0.f, 5.f, 0.f)), t*3.f, vec3(-0.1f, 0.1f, 1.f));
+				}
+			),
 			make_shared<surface_primitive>(make_shared<surfaces::box>(vec3(0.f), vec3(5.f, 0.1f, 5.f)),
 				make_shared<material>(make_shared<checkerboard_texture>(vec3(1.f, 1.f, 0.f), vec3(0.f, 1.f, 0.f), 2.f)))
 		}),

@@ -73,6 +73,37 @@ namespace whrt5 {
 			}
 		};
 
+		struct cylinder : public surface {
+			float radius;
+			float height;
+
+			cylinder(float r, float h) : radius(r), height(h) {}
+			
+			bool hit(const ray& r, hit_record* hr) const override {
+				// (ox+dx*t)^2 + (oz+dz*t)^2 = radius^2; 0 < y < height
+				float I1 = 2.f * dot(r.e.xz(), r.d.xz());
+				float denm = 2.f * dot(r.d.xz(), r.d.xz());
+				float det = I1*I1 - 2.f*denm*(dot(r.e.xz(), r.e.xz()) - radius*radius);
+				if (det < 0.f) return false;
+				det = sqrt(det);
+				float t1 = (det - 2.f*r.e.x*r.d.x - 2.f*r.e.z*r.d.z)/denm;
+				float t2 = (-det - 2.f*r.e.x*r.d.x - 2.f*r.e.z*r.d.z)/denm;
+				float t = glm::min(t1, t2);
+				vec3 p = r(t);
+				if (t < 0.f || p.y < 0.f || p.y > height) return false;
+				if (hr != nullptr) {
+					if (hr->t < t) return false;
+					hr->t = t;
+					hr->norm = normalize(vec3(p.x, 0.01f, p.z));
+					hr->texc = vec2(atan(p.z/p.x), p.y);
+					return true;
+				}
+				else {
+					return true;
+				}
+			}
+		};
+
 		struct disk : public surface {
 			float radius;
 			vec3 norm;

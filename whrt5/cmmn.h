@@ -229,13 +229,14 @@ namespace whrt5 {
 	};
 	
 	namespace rnd {
-		static mt19937 RNG;
-		//static minstd_rand RNG = minstd_rand(random_device()());
+		//static mt19937 RNG;
+		static minstd_rand RNG = minstd_rand(random_device()());
 
 		inline int randi(int min, int max) {
 			uniform_int_distribution<int> dist(min, max);
 			return dist(RNG);
 		}
+
 		inline float randf() {
 			uniform_real_distribution<float> dist;
 			return dist(RNG);
