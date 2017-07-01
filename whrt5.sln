@@ -5,6 +5,8 @@ VisualStudioVersion = 14.0.25420.1
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "whrt5", "whrt5\whrt5.vcxproj", "{92846C18-EAA9-44B4-BA15-A33539A49785}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "test_midi", "test_midi\test_midi.vcxproj", "{A745F9B9-81AC-4B59-B84B-F121C394573C}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -21,6 +23,14 @@ Global
 		{92846C18-EAA9-44B4-BA15-A33539A49785}.Release|x64.Build.0 = Release|x64
 		{92846C18-EAA9-44B4-BA15-A33539A49785}.Release|x86.ActiveCfg = Release|Win32
 		{92846C18-EAA9-44B4-BA15-A33539A49785}.Release|x86.Build.0 = Release|Win32
+		{A745F9B9-81AC-4B59-B84B-F121C394573C}.Debug|x64.ActiveCfg = Debug|x64
+		{A745F9B9-81AC-4B59-B84B-F121C394573C}.Debug|x64.Build.0 = Debug|x64
+		{A745F9B9-81AC-4B59-B84B-F121C394573C}.Debug|x86.ActiveCfg = Debug|Win32
+		{A745F9B9-81AC-4B59-B84B-F121C394573C}.Debug|x86.Build.0 = Debug|Win32
+		{A745F9B9-81AC-4B59-B84B-F121C394573C}.Release|x64.ActiveCfg = Release|x64
+		{A745F9B9-81AC-4B59-B84B-F121C394573C}.Release|x64.Build.0 = Release|x64
+		{A745F9B9-81AC-4B59-B84B-F121C394573C}.Release|x86.ActiveCfg = Release|Win32
+		{A745F9B9-81AC-4B59-B84B-F121C394573C}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
