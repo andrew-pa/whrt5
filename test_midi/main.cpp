@@ -2,45 +2,11 @@
 #include <iostream>
 #include <thread>
 #include <Windows.h>
+#include <map>
 
 uint32_t freq_from_midi(uint8_t midi) {
 	return (uint32_t)(pow(2, (((float)midi) - 69.f) / 12.f)*440.f);
 }
-
-/* 
-	MIDI events ->
-		Percussion -> Hit events -> Animatable paths -> Animation
-
-*/
-
-struct hit_event {
-	float time;
-	float duration;
-	uint8_t note;
-	uint8_t velocity;
-};
-
-#ifdef PoC
-vector<hit_event> evt; // in chronological order
-int animate_single_mallet(float t) {
-	for (int i = 0; i < evt.size(); ++i) {
-		auto e = evt[i];
-		if (t > e.time && t < e.time + e.duration) {
-			// found current event
-			float T = t - e.time; //time since start of note
-			float pt = T / e.duration;
-			if (pt < 0.5f) {
-				// lift up mallet
-				return lerp(INSTR_POS[e.note], REST_POS[e.note], pt*2.f);
-			}
-			else {
-				return lerp(REST_POS[e.note], INSTR_POS[evt[i+1].note], (pt-.5f)*2.f);
-			}
-			return 0;
-		}
-	}
-}
-#endif
 
 int main() {
 	FILE* f; fopen_s(&f, R"(C:\Users\andre\Source\whrt5\whrt5\test.mid)", "rb");

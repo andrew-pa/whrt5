@@ -88,6 +88,10 @@ namespace whrt5 {
 				det = sqrt(det);
 				float t1 = (det - 2.f*r.e.x*r.d.x - 2.f*r.e.z*r.d.z)/denm;
 				float t2 = (-det - 2.f*r.e.x*r.d.x - 2.f*r.e.z*r.d.z)/denm;
+				float y1 = r.e.y + r.d.y*t1;
+				float y2 = r.e.y + r.d.y*t2;
+				if (y1 < 0 || y1 > height) t1 = 1e9f;
+				if (y2 < 0 || y2 > height) t2 = 1e9f;
 				float t = glm::min(t1, t2);
 				vec3 p = r(t);
 				if (t < 0.f || p.y < 0.f || p.y > height) return false;

@@ -4,8 +4,43 @@
 #include "camera.h"
 #include "video.h"
 #include "surface.h"
+#include "motion.h"
 
 namespace whrt5 {
+
+	enum class interpolation {
+		linear, exp, log
+	};
+	template<typename T>
+	struct keyframes {
+		struct key {
+			float t;
+			T value;
+			interpolation interp;
+			float k;
+			key(float t, T v, interpolation i = interpolation::linear, float k = 1.f)
+				: t(t), value(v), interp(i), k(k) {}
+		};
+		vector<key> keys;
+
+		keyframes(const vector<key> keys) : keys(keys) {}
+		keyframes(initializer_list<key> keys) : keys(keys.begin(), keys.end()) {}
+
+		T operator()(float t) const {
+			for (size_t i = 0; i < keys.size()-1; ++i) {
+				float tt = keys[i].t, nt = keys[i + 1].t;
+				if (tt < t && t < nt) {
+					auto M = (t-tt)/(nt-tt);
+					switch (keys[i].interp) {
+					case interpolation::exp: M = exp(keys[i].k * M); break;
+					case interpolation::log: M = log(keys[i].k * M); break;
+					}
+					return mix(keys[i].value, keys[i + 1].value, M);
+				}
+			}
+			return keys[keys.size() - 1].value;
+		}
+	};
 
 	struct material {
 		shared_ptr<texture<vec3, vec2>> tex;
@@ -14,7 +49,7 @@ namespace whrt5 {
 		material(shared_ptr<texture<vec3, vec2>> t, float ref = 0.f) : tex(t), reflect(ref) {}
 	};
 	struct hit_record : public surfaces::hit_record {
-		material* mat;
+		shared_ptr<material> mat;
 	};
 	struct primitive {
 		virtual bool hit(const ray& r, hit_record* hr) const = 0;
@@ -29,7 +64,7 @@ namespace whrt5 {
 
 		bool hit(const ray& r, hit_record* hr) const {
 			if (surf->hit(r, hr)) {
-				hr->mat = mat.get();
+				hr->mat = mat;
 				return true;
 			}
 			return false;
@@ -84,14 +119,15 @@ namespace whrt5 {
 			const vec3 L = vec3(0.f, 1.f, 0.f);
 			hit_record hr;
 			if (scene->hit(r, &hr)) {
+				if (hr.mat == nullptr) return background(r);
 				vec3 p = r(hr.t);
 				hit_record shr;
 				float shadow = 1.f;
 				auto sr = ray(p + hr.norm*0.01f, L, r.time);
 				if (scene->hit(sr, &shr)) {
-					shadow = 0.f;
+					shadow = .0f;
 				}
-				vec3 col =  hr.mat->tex->texel(hr.texc)*(glm::max(0.f, dot(hr.norm, L))*shadow);
+				vec3 col = hr.mat->tex->texel(hr.texc)*(glm::max(0.f, dot(hr.norm, L))*shadow);
 				if (hr.mat->reflect > 0.f) {
 					col += hr.mat->reflect * ray_color(ray(p + hr.norm*0.01f, reflect(r.d, hr.norm), r.time), rc + 1);
 				}
@@ -146,9 +182,10 @@ int main(int argc, char* argv[]) {
 		<< ".bmp";
 #endif
 	uint32 fps = 30;
-	auto res = uvec2(640, 480);
+	auto res = uvec2(320, 240);//uvec2(640, 480);
 	const int fc = fps * 10;
 	const uint8 smp = 8; 
+#ifdef TEST
 	auto rndr = renderer(make_shared<pgroup>(
 		pgroup {
 			/*make_shared<surface_primitive>(make_shared<surfaces::sphere>([](float t) {
@@ -175,19 +212,53 @@ int main(int argc, char* argv[]) {
 					return translate(mat4(1), vec3(0.f, 3.f, 0.f));//, t, vec3(0.3f, 0.8f, 0.6f));
 				}
 			),*/
-			make_shared<transform_primitive>(
+			/*make_shared<transform_primitive>(
 				make_shared<surface_primitive>(make_shared<surfaces::cylinder>(1.0f, 5.f),
 					make_shared<material>(make_shared<checkerboard_texture>(vec3(1.f), vec3(0.0f), 2.f))
 				),
 				[](float t) {
-					return rotate(translate(mat4(1), vec3(0.f, 5.f, 0.f)), t*3.f, vec3(-0.1f, 0.1f, 1.f));
+					return rotate(translate(mat4(1), vec3(0.f, 5.f, 0.f)), t*5.f, vec3(-0.4f, 0.2f, 1.f));
 				}
+			),*/
+			make_shared<surface_primitive>(make_shared<surfaces::sphere>(keyframes<vec3> {
+					{0.f, vec3(0.f, 1.f, 0.f)},
+					{2.5f, vec3(5.f, 1.f, 0.f), interpolation::exp},
+					{5.f, vec3(5.f, 1.f, 5.f)},
+					{7.5f, vec3(0.f, 1.f, 5.f), interpolation::log},
+					{10.f, vec3(0.f, 1.f, 0.f)},
+				}, 1.f),
+				make_shared<material>(make_shared<checkerboard_texture>(vec3(1.f), vec3(0.f), 8.f))
 			),
 			make_shared<surface_primitive>(make_shared<surfaces::box>(vec3(0.f), vec3(5.f, 0.1f, 5.f)),
 				make_shared<material>(make_shared<checkerboard_texture>(vec3(1.f, 1.f, 0.f), vec3(0.f, 1.f, 0.f), 2.f)))
 		}),
 		camera(vec3(0.f, 12.f, -12.f), vec3(0.f), 0.01f, 5.f, 1.f / (float)fps), smp
 	);
+#else
+	auto scene = make_shared<pgroup>(pgroup{
+		make_shared<surface_primitive>(make_shared<surfaces::box>(vec3(0.f), vec3(5.f, 0.1f, 5.f)),
+			make_shared<material>(make_shared<checkerboard_texture>(vec3(1.f, 1.f, 0.f), vec3(0.f, 1.f, 0.f), 2.f)))
+	});
+
+	auto mallet1 = motion::single_mallet();
+	auto bar_mat = make_shared<material>(make_shared<const_texture<vec3, vec2>>(vec3(0.6f, 0.2f, 0.9f)));
+	for (int i = 0; i < 5; ++i) {
+		vec3 p = vec3((float)i / 2.f, .5f, 0.f);
+		mallet1.inst_pos[i + 60] = motion::loc_rot(p+vec3(0.f, 0.2f, -.6f), vec3(-.3f + pi<float>()*0.5f, 0.f, 0.f));
+		mallet1.rest_pos[i + 60] = motion::loc_rot(p+vec3(0.f, 0.3f, -.7f), vec3(.1f + pi<float>()*0.5f, 0.f, 0.f));
+		scene->objs.push_back(make_shared<surface_primitive>(make_shared<surfaces::box>(
+			p, vec3(.2f, 0.05f, .5f + (float)i / 4.f)), bar_mat));
+	}
+	for (int i = 0; i < 10; ++i) {
+		mallet1.evt.push_back(motion::hit_event((float)i, 1.f, 60+rand()%5, 255));
+	}
+
+	scene->objs.push_back(make_shared<transform_primitive>(make_shared<surface_primitive>(make_shared<surfaces::cylinder>(0.15f, 1.f),
+		make_shared<material>(make_shared<const_texture<vec3, vec2>>(vec3(0.4f)))), mallet1));
+
+	auto rndr = renderer(scene, camera(vec3(3.f, 6.f, -4.f), vec3(0.f), 0.01f, 5.f, 1.f / (float)fps), smp);
+#endif
+
 	auto rt = texture2d(res);
 	
 #ifdef VIDEO
@@ -199,7 +270,7 @@ int main(int argc, char* argv[]) {
 	}
 	v.flush();
 #else
-	rndr.render(rt, 0.f);
+	rndr.render(rt, 3.f);
 	rt.write_bmp(fns.str());
 #endif
 

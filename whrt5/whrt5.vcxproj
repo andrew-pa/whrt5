@@ -129,6 +129,7 @@
     <ClInclude Include="camera.h" />
     <ClInclude Include="cmmn.h" />
     <ClInclude Include="midi.h" />
+    <ClInclude Include="motion.h" />
     <ClInclude Include="surface.h" />
     <ClInclude Include="texture.h" />
     <ClInclude Include="video.h" />
