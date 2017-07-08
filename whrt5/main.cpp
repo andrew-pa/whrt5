@@ -182,8 +182,9 @@ int main(int argc, char* argv[]) {
 		<< ".bmp";
 #endif
 	uint32 fps = 30;
-	auto res = uvec2(320, 240);//uvec2(640, 480);
-	const int fc = fps * 10;
+	auto res = //uvec2(320, 240);
+				uvec2(640, 480);
+	const int fc = fps * 15;
 	const uint8 smp = 8; 
 #ifdef TEST
 	auto rndr = renderer(make_shared<pgroup>(
@@ -244,12 +245,12 @@ int main(int argc, char* argv[]) {
 	auto bar_mat = make_shared<material>(make_shared<const_texture<vec3, vec2>>(vec3(0.6f, 0.2f, 0.9f)));
 	for (int i = 0; i < 5; ++i) {
 		vec3 p = vec3((float)i / 2.f, .5f, 0.f);
-		mallet1.inst_pos[i + 60] = motion::loc_rot(p+vec3(0.f, 0.2f, -.6f), vec3(-.3f + pi<float>()*0.5f, 0.f, 0.f));
-		mallet1.rest_pos[i + 60] = motion::loc_rot(p+vec3(0.f, 0.3f, -.7f), vec3(.1f + pi<float>()*0.5f, 0.f, 0.f));
+		mallet1.inst_pos[i + 60] = motion::loc_rot(p+vec3(0.f, 0.2f, -.7f), vec3(-.3f + pi<float>()*0.5f, 0.f, 0.f));
+		mallet1.rest_pos[i + 60] = motion::loc_rot(p+vec3(0.f, 0.3f, -.8f), vec3(.1f + pi<float>()*0.5f, 0.f, 0.f));
 		scene->objs.push_back(make_shared<surface_primitive>(make_shared<surfaces::box>(
 			p, vec3(.2f, 0.05f, .5f + (float)i / 4.f)), bar_mat));
 	}
-	for (int i = 0; i < 10; ++i) {
+	for (int i = 0; i < 16; ++i) {
 		mallet1.evt.push_back(motion::hit_event((float)i, 1.f, 60+rand()%5, 255));
 	}
 
